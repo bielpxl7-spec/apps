@@ -1420,6 +1420,12 @@ async function doSearch(){
   hits.forEach(e=>{ if(e.appid&&!seen.has(e.appid)){ seen.add(e.appid); merged.push({id:e.appid,name:e.name,img:e.img,unlock:true}); } });
 
   (items||[]).forEach(it=>{ if(!seen.has(it.id)){ seen.add(it.id); merged.push(it); } });
+  // esconde DLC/trilha/season pass sem desbloqueio: o conteudo ja vem junto com o jogo base
+  const nm=s=>(''+(s||'')).toLowerCase().replace(/[®™©]/g,'').replace(/\s+/g,' ').trim();
+  const bases=merged.filter(it=>it.unlock!==false).map(it=>nm(it.name)).filter(s=>s.length>=4);
+  const extra=/\b(dlc|soundtrack|ost|season pass|pass|pack|bundle|costume|outfit|skin|artbook|art book|expansion|upgrade|character|episode|bonus|demo|playtest|server|sdk|editor)\b/;
+  const lixo=it=>{ if(it.unlock!==false) return false; const n=nm(it.name); return bases.some(b=>n!==b&&n.startsWith(b)) || extra.test(n); };
+  for(let i=merged.length-1;i>=0;i--) if(lixo(merged[i])) merged.splice(i,1);
 
   if(!merged.length){lastResults=[];$('results').innerHTML=`<div class="hint">${t('t.noResults')}</div>`;return}
 
