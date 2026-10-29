@@ -422,31 +422,9 @@ a{color:inherit;text-decoration:none}
 .dp-cap{font-size:.74rem;color:var(--muted2);text-align:center;margin-top:10px}
 </style></head><body>
 
-<div id="login"><div class="login-card">
+<!-- Interface principal: inicialização sem tela de login. -->
 
-  <div class="login-logo"><div class="ll-mark">O</div><div><div class="ll-name">OVER<span>ISE</span></div><div class="ll-sub">Vitalício</div></div></div>
-
-  <div id="loginChecking"><div class="spinner"></div><p class="lc-txt" data-i18n="login.checking">Verificando licença...</p></div>
-
-  <div id="loginForm" style="display:none">
-
-    <h2 data-i18n="login.title">Acesse sua conta</h2>
-
-    <p class="lf-sub" data-i18n-html="login.sub">Use o <b>email da sua compra</b>.</p>
-
-    <input id="email" type="email" placeholder="seu@email.com" data-i18n-ph="login.ph" onkeydown="if(event.key==='Enter')doLogin()">
-
-    <button id="loginBtn" class="btn btn-green" onclick="doLogin()" data-i18n="login.btn">Entrar</button>
-
-    <div class="login-err" id="loginErr"></div>
-
-    <a class="login-help" onclick="api.open_url('https://suporte.overisestore.com.br/')" data-i18n="login.help">Não consegue entrar? Falar com o suporte</a>
-
-  </div>
-
-</div></div>
-
-<div class="shell" id="shell" style="display:none">
+<div class="shell" id="shell" style="display:grid">
 
   <aside class="sidebar">
 
@@ -478,7 +456,7 @@ a{color:inherit;text-decoration:none}
 
       <a onclick="api.open_url('https://suporte.overisestore.com.br/')" data-i18n="nav.support"><i class="fa-solid fa-headset"></i> Suporte</a>
 
-      <a onclick="doLogout()" data-i18n="nav.logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</a>
+      
 
     </nav>
 
@@ -1961,68 +1939,30 @@ async function checkUpdate(){
 
 function motivoMsg(k){ const key='motivo.'+(k||'generic'); const v=tr(key); return v===key?t('motivo.generic'):v; }
 
-function loginError(m){$('loginErr').textContent=m||''}
-
-function showLogin(motivo){
-
-  $('shell').style.display='none'; $('login').style.display='grid';
-
-  $('loginChecking').style.display='none'; $('loginForm').style.display='block';
-
-  if(motivo) loginError(motivoMsg(motivo));
-
-}
-
+// Inicialização da interface sem formulário de login ou bloqueio visual de licença.
+// Este HTML não altera as verificações de acesso implementadas no backend Python.
 async function showApp(){
-
-  $('login').style.display='none'; $('shell').style.display='grid';
-
-  const s=await api.status();
-
+  $('shell').style.display='grid';
+  let s={};
+  try { s=(await api.status())||{}; }
+  catch(e) { console.warn('Status indisponível:',e); }
   applyVersion(s);
-
-  PLANO = s.plano || 'basico';
-
+  PLANO=s.plano||'basico';
   applyAccountUI();
-
-  try{ const pl=await api.plano_lista(); PLANO_ALL=pl.all; PLANO_SET=pl.all?null:new Set(pl.appids); }
-
-  catch(e){ PLANO_ALL=(PLANO==='vitalicio'); PLANO_SET=PLANO_ALL?null:new Set(); }
-
-  renderUnlock(); buildLib();
-
+  try {
+    const pl=await api.plano_lista();
+    PLANO_ALL=!!pl.all;
+    PLANO_SET=pl.all?null:new Set(pl.appids||[]);
+  } catch(e) {
+    PLANO_ALL=false;
+    PLANO_SET=new Set();
+  }
+  renderUnlock();
+  buildLib();
   maybeShowWelcome();
-
 }
-
-async function doLogin(){
-
-  const email=$('email').value.trim();
-
-  if(!email){loginError(t('login.enterEmail'));return}
-
-  const b=$('loginBtn'); b.disabled=true; b.textContent=t('login.checkingBtn'); loginError('');
-
-  const r=await api.login(email);
-
-  b.disabled=false; b.textContent=t('login.btn');
-
-  if(r&&r.ok){showApp();} else {loginError(motivoMsg(r&&r.motivo));}
-
-}
-
-async function doLogout(){
-
-  await api.logout(); added=[]; PLANO='basico'; $('email').value=''; loginError(''); showLogin();
-
-}
-
 async function boot(){
-
-  const lic=await api.check_license();
-
-  if(lic&&lic.ok){showApp();} else {showLogin(lic&&lic.motivo);}
-
+  await showApp();
 }
 
 applyStatic();
